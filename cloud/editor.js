@@ -6,7 +6,8 @@ export async function rewrite({text,tone='thân thiện, chuyên nghiệp'}){
  const body=JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:'application/json'}});
  let j,r;
  for(let k=0;k<4;k++){ // quá tải/giới hạn tạm thời: thử lại sau 3s, 8s, 15s
-  r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body});j=await r.json();
+  try{r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body,signal:AbortSignal.timeout(60000)});j=await r.json()}
+  catch(e){if(k==3)throw new Error('Không kết nối được Google AI: '+(e.cause?.code||e.cause?.message||e.name));await wait(5000*(k+1));continue}
   if(r.ok||![429,500,503].includes(r.status)||k==3)break;
   await wait([3000,8000,15000][k])}
  if(!r.ok)throw new Error(r.status==503||r.status==429?'Google đang quá tải hoặc hết hạn mức tạm thời. Đợi vài phút rồi bấm lại.':(j.error?.message||'Lỗi AI'));

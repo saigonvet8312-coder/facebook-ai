@@ -8,7 +8,7 @@ const feeds=(E('RSS_FEEDS')||'https://vnexpress.net/rss/bat-dong-san.rss,https:/
 fs.mkdirSync('docs/data',{recursive:true});
 let posts=[];
 if(fs.existsSync(F)){try{posts=dec(fs.readFileSync(F,'utf8'))}catch{throw new Error('Không giải mã được dữ liệu cũ: PAGE_PASSWORD đã đổi? Xóa file docs/data/posts.enc.json rồi chạy lại.')}}
-const seen=new Set(posts.map(p=>p.source_link)),max=+(E('AUTO_WRITE')||2),since=Date.now()-2*864e5,ps=new Parser(),items=[];
+const seen=new Set(posts.map(p=>p.source_link)),max=+(E('AUTO_WRITE')||2),since=Date.now()-2*864e5,ps=new Parser({timeout:20000}),items=[];
 const t=i=>Date.parse(i.isoDate||i.pubDate||'');
 for(const u of feeds){try{const f=await ps.parseURL(u);for(const i of f.items)if(i.link&&!seen.has(i.link)&&t(i)>=since)items.push(i)}catch(e){console.error(u,e.message)}}
 items.sort((a,b)=>t(b)-t(a));
