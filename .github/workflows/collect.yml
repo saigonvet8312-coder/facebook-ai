@@ -17,6 +17,7 @@ jobs:
       - run: npm install --no-save rss-parser
       - run: node cloud/collect.mjs
         env:
+          NODE_OPTIONS: --dns-result-order=ipv4first
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           RSS_FEEDS: ${{ vars.RSS_FEEDS }}
