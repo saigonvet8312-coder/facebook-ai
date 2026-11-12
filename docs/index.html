@@ -1,0 +1,31 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Duyệt bài Facebook</title>
+<style>body{margin:0;font:15px/1.5 system-ui,sans-serif;background:#f2f5f7;color:#14283a}nav{background:#14283a;display:flex;gap:4px;padding:8px;overflow-x:auto}nav button{background:none;border:0;color:#fff;padding:8px 14px;border-radius:6px;cursor:pointer;white-space:nowrap}nav button.on{background:#0e7c66}main{max-width:760px;margin:0 auto;padding:16px}.c{background:#fff;border:1px solid #d3dce3;border-radius:8px;padding:12px;margin:10px 0}.w{background:#fff4d6}textarea,input{width:100%;box-sizing:border-box;padding:8px;border:1px solid #d3dce3;border-radius:6px;font:inherit;margin:3px 0}button{padding:7px 12px;border:1px solid #d3dce3;border-radius:6px;background:#fff;cursor:pointer;margin:2px 0}</style></head>
+<body><nav id="nv"></nav><main id="mn">Đang tải...</main>
+<script>
+const K='fbm',NV=document.getElementById('nv'),MN=document.getElementById('mn'),L={p:'Chờ duyệt',l:'Chưa đăng',d:'Đã đăng'};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let P=[],S={},tab='p';try{S=JSON.parse(localStorage.getItem(K))||{}}catch{}
+const sv=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch{}},st=p=>S[p.id]?.s||'p',f=(p,k)=>S[p.id]?.e?.[k]??p[k]??'';
+const ed=(id,k,v)=>{S[id]=S[id]||{};(S[id].e=S[id].e||{})[k]=v;sv()};
+const set=(id,s)=>{S[id]=S[id]||{};S[id].s=s;sv();R()};
+const ok=id=>{S[id]=S[id]||{};S[id].w=new Date(Date.now()+15*60000).toISOString();S[id].s='l';sv();R()};
+const cp=id=>{const p=P.find(x=>x.id==id);navigator.clipboard.writeText([f(p,'title'),f(p,'content'),f(p,'hashtags')].filter(Boolean).join('\n\n')).then(()=>alert('Đã sao chép'))};
+const card=p=>{const s=st(p),due=s=='l'&&S[p.id].w<=new Date().toISOString();return `<div class="c" style="${s=='d'?'opacity:.7':due?'border-left:5px solid #0e7c66;background:#e8f6f1':s=='l'?'border-left:5px solid #e0a100;background:#fffbe6':'border-left:5px solid #e0a100'}">
+<input style="font-weight:700" value="${esc(f(p,'title'))}" onchange="ed('${p.id}','title',this.value)"><textarea rows="8" onchange="ed('${p.id}','content',this.value)">${esc(f(p,'content'))}</textarea>
+<input value="${esc(f(p,'hashtags'))}" onchange="ed('${p.id}','hashtags',this.value)">${p.image_note?`<p><i>Gợi ý ảnh: ${esc(p.image_note)}</i></p>`:''}
+<p><a href="${esc(p.source_link)}" target="_blank" rel="noreferrer">Tin nguồn</a></p>
+${s=='p'?`<button onclick="ok('${p.id}')">Duyệt (nhắc đăng sau 15 phút)</button> <button onclick="set('${p.id}','x')">Bỏ bài</button>`:''}
+${s=='l'?`<b>${due?'ĐẾN GIỜ ĐĂNG: ':'CHƯA ĐĂNG, giờ đăng: '}${new Date(S[p.id].w).toLocaleString('vi-VN')}</b><br><button onclick="cp('${p.id}')">Sao chép</button> <button onclick="set('${p.id}','d')">Đã đăng</button> <button onclick="set('${p.id}','p')">Trả về chờ duyệt</button>`:''}
+${s=='d'?`<button onclick="cp('${p.id}')">Sao chép</button>`:''}</div>`};
+function R(){const by=t=>P.filter(p=>st(p)==t).sort((a,b)=>t=='p'?(b.created||'').localeCompare(a.created||''):(S[b.id]?.w||'').localeCompare(S[a.id]?.w||'')),now=new Date().toISOString(),due=by('l').filter(p=>S[p.id].w<=now).length;
+ NV.innerHTML=Object.entries(L).map(([k,v])=>`<button class="${k==tab?'on':''}" onclick="tab='${k}';R()">${v} (${by(k).length})</button>`).join('');
+ MN.innerHTML=(due?`<div class="c w">Đến giờ đăng ${due} bài. Xem tab Đã lên lịch.</div>`:'')+(by(tab).map(card).join('')||'<p>Chưa có bài.</p>')}
+const D=async(o,pw)=>{const b=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)),k=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']),
+ key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:b(o.salt),iterations:200000,hash:'SHA-256'},k,{name:'AES-GCM',length:256},false,['decrypt']);
+ return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:b(o.iv)},key,b(o.data))))};
+let ENC=null;
+const ask=m=>{MN.innerHTML=`<div class="c"><h3>Nhập mật khẩu</h3>${m||''}<input type="password" id="pw" onkeydown="if(event.key=='Enter')unlock(this.value)"><button onclick="unlock(document.getElementById('pw').value)">Mở</button></div>`};
+const unlock=async pw=>{try{P=await D(ENC,pw);sessionStorage.setItem('pw',pw);R()}catch{sessionStorage.removeItem('pw');ask('<p>Sai mật khẩu.</p>')}};
+const url=location.hostname.endsWith('github.io')?`https://raw.githubusercontent.com/${location.hostname.split('.')[0]}/${location.pathname.split('/')[1]}/main/docs/data/posts.enc.json`:'data/posts.enc.json';
+fetch(url+'?t='+Date.now()).then(r=>{if(r.status==404)throw new Error('Chưa có dữ liệu. Vào tab Actions của GitHub chạy workflow collect trước.');return r.json()}).then(o=>{ENC=o;const s=sessionStorage.getItem('pw');s?unlock(s):ask('')}).catch(e=>MN.textContent=e.message);
+</script></body></html>
