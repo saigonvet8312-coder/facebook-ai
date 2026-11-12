@@ -9,7 +9,10 @@ export async function rewrite({text,tone='thân thiện, chuyên nghiệp'}){
   try{r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body,signal:AbortSignal.timeout(60000)});j=await r.json()}
   catch(e){if(k==3)throw new Error('Không kết nối được Google AI: '+(e.cause?.code||e.cause?.message||e.name));await wait(5000*(k+1));continue}
   if(r.ok||![429,500,503].includes(r.status)||k==3)break;
-  await wait([3000,8000,15000][k])}
- if(!r.ok)throw new Error(r.status==503||r.status==429?'Google đang quá tải hoặc hết hạn mức tạm thời. Đợi vài phút rồi bấm lại.':(j.error?.message||'Lỗi AI'));
+  await wait([10000,30000,60000][k])}
+ if(!r.ok){let hint='';
+  if([404,429,503].includes(r.status)){try{const l=await(await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}&pageSize=100`,{signal:AbortSignal.timeout(20000)})).json();
+   hint=' | Model khóa này có thể dùng: '+(l.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')&&/flash/i.test(m.name)).map(m=>m.name.replace('models/','')).join(', ')}catch{}}
+  throw new Error(`Google ${r.status}: ${j?.error?.message||'Lỗi AI'}${hint}`)}
  try{const o=JSON.parse(j.candidates[0].content.parts[0].text);return{title:o.title||'',content:o.content||'',hashtags:o.hashtags||'',image_note:o.image_note||''}}
  catch{throw new Error('AI trả về sai định dạng, thử lại')}}
