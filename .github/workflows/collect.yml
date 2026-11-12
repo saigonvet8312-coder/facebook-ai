@@ -1,0 +1,29 @@
+name: collect
+on:
+  schedule:
+    - cron: '0 */3 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-save rss-parser
+      - run: node cloud/collect.mjs
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          RSS_FEEDS: ${{ vars.RSS_FEEDS }}
+          PAGE_PASSWORD: ${{ secrets.PAGE_PASSWORD }}
+          PAGE_NAME: ${{ vars.PAGE_NAME }}
+          AUTO_WRITE: ${{ vars.AUTO_WRITE }}
+      - run: |
+          git config user.name "bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add docs/data
+          git diff --cached --quiet || (git commit -m "cap nhat bai cho duyet" && git push)
