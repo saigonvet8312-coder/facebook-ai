@@ -10,9 +10,17 @@ const ed=(id,k,v)=>{S[id]=S[id]||{};(S[id].e=S[id].e||{})[k]=v;sv()};
 const set=(id,s)=>{S[id]=S[id]||{};S[id].s=s;sv();R()};
 const ok=id=>{S[id]=S[id]||{};S[id].w=new Date(Date.now()+15*60000).toISOString();S[id].s='l';sv();R()};
 const cp=id=>{const p=P.find(x=>x.id==id);navigator.clipboard.writeText([f(p,'title'),f(p,'content'),f(p,'hashtags')].filter(Boolean).join('\n\n')).then(()=>alert('Đã sao chép'))};
+const PR=t=>`Bạn là biên tập viên trang Facebook. Dựa vào tin dưới đây, trả về JSON với các khóa: title (tiêu đề hấp dẫn, dưới 90 ký tự), content (120-200 từ, mở đầu thu hút, kết bằng câu hỏi mời bình luận), hashtags (chuỗi 3 hashtag), image_note (gợi ý ảnh minh họa kèm chú thích ngắn). Giọng thân thiện, chuyên nghiệp. Chỉ dùng thông tin có trong tin gốc, không bịa số liệu, không hứa hẹn lợi nhuận.\n\nTin gốc:\n${t}`;
+const ai=async id=>{const p=P.find(x=>x.id==id);
+ if(!sessionStorage.getItem('gk')){const k=prompt('Dán khóa Gemini (chỉ lưu tạm trong tab này):');if(!k)return;const m=prompt('Tên model:','gemini-3.5-flash-lite');if(!m)return;sessionStorage.setItem('gk',k.trim());sessionStorage.setItem('gm',m.trim())}
+ try{const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${sessionStorage.getItem('gm')}:generateContent?key=${sessionStorage.getItem('gk')}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:PR(f(p,'title')+'\n'+f(p,'content'))}]}],generationConfig:{responseMimeType:'application/json'}})});
+  const j=await r.json();if(!r.ok)throw new Error(j.error?.message||r.status);
+  const o=JSON.parse(j.candidates[0].content.parts[0].text);
+  S[id]=S[id]||{};S[id].e={title:o.title||'',content:o.content||'',hashtags:o.hashtags||''};S[id].img=o.image_note||'';S[id].done=1;sv();R()}
+ catch(e){if(/API key|API_KEY/i.test(e.message)){sessionStorage.removeItem('gk')}alert('Lỗi AI: '+e.message)}};
 const card=p=>{const s=st(p),due=s=='l'&&S[p.id].w<=new Date().toISOString();return `<div class="c" style="${s=='d'?'opacity:.7':due?'border-left:5px solid #0e7c66;background:#e8f6f1':s=='l'?'border-left:5px solid #e0a100;background:#fffbe6':'border-left:5px solid #e0a100'}">
-<input style="font-weight:700" value="${esc(f(p,'title'))}" onchange="ed('${p.id}','title',this.value)"><textarea rows="8" onchange="ed('${p.id}','content',this.value)">${esc(f(p,'content'))}</textarea>
-<input value="${esc(f(p,'hashtags'))}" onchange="ed('${p.id}','hashtags',this.value)">${p.image_note?`<p><i>Gợi ý ảnh: ${esc(p.image_note)}</i></p>`:''}
+${p.needs_ai&&!S[p.id]?.done?`<p><b style="color:#b45309">CHƯA SOẠN</b> <button onclick="ai('${p.id}')">AI viết bài</button></p>`:''}<input style="font-weight:700" value="${esc(f(p,'title'))}" onchange="ed('${p.id}','title',this.value)"><textarea rows="8" onchange="ed('${p.id}','content',this.value)">${esc(f(p,'content'))}</textarea>
+<input value="${esc(f(p,'hashtags'))}" onchange="ed('${p.id}','hashtags',this.value)">${(S[p.id]?.img??p.image_note)?`<p><i>Gợi ý ảnh: ${esc(S[p.id]?.img??p.image_note)}</i></p>`:''}
 <p><a href="${esc(p.source_link)}" target="_blank" rel="noreferrer">Tin nguồn</a></p>
 ${s=='p'?`<button onclick="ok('${p.id}')">Duyệt (nhắc đăng sau 15 phút)</button> <button onclick="set('${p.id}','x')">Bỏ bài</button>`:''}
 ${s=='l'?`<b>${due?'ĐẾN GIỜ ĐĂNG: ':'CHƯA ĐĂNG, giờ đăng: '}${new Date(S[p.id].w).toLocaleString('vi-VN')}</b><br><button onclick="cp('${p.id}')">Sao chép</button> <button onclick="set('${p.id}','d')">Đã đăng</button> <button onclick="set('${p.id}','p')">Trả về chờ duyệt</button>`:''}

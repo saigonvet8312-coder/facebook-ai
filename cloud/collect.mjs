@@ -12,11 +12,14 @@ const seen=new Set(posts.map(p=>p.source_link)),max=+(E('AUTO_WRITE')||2),since=
 const t=i=>Date.parse(i.isoDate||i.pubDate||'');
 for(const u of feeds){try{const f=await ps.parseURL(u);for(const i of f.items)if(i.link&&!seen.has(i.link)&&t(i)>=since)items.push(i)}catch(e){console.error(u,e.message)}}
 items.sort((a,b)=>t(b)-t(a));
-let n=0;
+let n=0,raw=0,ai=true;
 for(const i of items){if(n>=max)break;
- try{const r=await rewrite({text:`${i.title}\n${i.contentSnippet||''}`}),c=(r.content||'').trim();if(!c)continue;
-  const id=createHash('sha1').update(c).digest('hex').slice(0,12);if(posts.some(x=>x.id==id))continue;
-  posts.unshift({id,title:r.title,content:c,hashtags:r.hashtags,image_note:r.image_note,source_link:i.link,created:new Date().toISOString()});n++}
- catch(e){console.error('AI:',e.message);break}}
+ const base={source_link:i.link,created:new Date().toISOString()};let p=null;
+ if(ai){try{const r=await rewrite({text:`${i.title}\n${i.contentSnippet||''}`}),c=(r.content||'').trim();
+  if(c)p={id:createHash('sha1').update(c).digest('hex').slice(0,12),title:r.title,content:c,hashtags:r.hashtags,image_note:r.image_note,...base}}
+  catch(e){ai=false;console.error('AI:',e.message)}}
+ if(!p){p={id:createHash('sha1').update(i.link).digest('hex').slice(0,12),title:i.title||'',content:(i.contentSnippet||'').trim(),hashtags:'',image_note:'',needs_ai:true,...base};raw++}
+ if(posts.some(x=>x.id==p.id)){if(p.needs_ai)raw--;continue}
+ posts.unshift(p);n++}
 const cut=Date.now()-30*864e5;posts=posts.filter(x=>Date.parse(x.created)>=cut).slice(0,300);
-fs.writeFileSync(F,enc(posts));console.log(`Bai moi cho duyet: ${n}`);
+fs.writeFileSync(F,enc(posts));console.log(`Bai moi cho duyet: ${n} (trong do ${raw} bai chua soan, se bam AI viet bai tren trang)`);
