@@ -4,7 +4,8 @@ if(PW.length<8)throw new Error('Thiếu secret PAGE_PASSWORD (tối thiểu 8 k�
 const key=(salt)=>pbkdf2Sync(PW,salt,200000,32,'sha256');
 const enc=o=>{const salt=randomBytes(16),iv=randomBytes(12),c=createCipheriv('aes-256-gcm',key(salt),iv),d=Buffer.concat([c.update(JSON.stringify(o),'utf8'),c.final(),c.getAuthTag()]);return JSON.stringify({v:1,salt:salt.toString('base64'),iv:iv.toString('base64'),data:d.toString('base64')})};
 const dec=txt=>{const o=JSON.parse(txt),b=Buffer.from(o.data,'base64'),d=createDecipheriv('aes-256-gcm',key(Buffer.from(o.salt,'base64')),Buffer.from(o.iv,'base64'));d.setAuthTag(b.subarray(b.length-16));return JSON.parse(Buffer.concat([d.update(b.subarray(0,b.length-16)),d.final()]).toString('utf8'))};
-const feeds=(E('RSS_FEEDS')||'https://vnexpress.net/rss/bat-dong-san.rss,https://vnexpress.net/rss/kinh-doanh.rss').split(',').map(s=>s.trim()).filter(Boolean);
+const feeds=(E('RSS_FEEDS')||'https://vnexpress.net/rss/bat-dong-san.rss').split(',').map(s=>s.trim()).filter(Boolean);
+console.log('Nguon RSS dang dung:',feeds.join(' , '));
 fs.mkdirSync('docs/data',{recursive:true});
 let posts=[];
 if(fs.existsSync(F)){try{posts=dec(fs.readFileSync(F,'utf8'))}catch{throw new Error('Không giải mã được dữ liệu cũ: PAGE_PASSWORD đã đổi? Xóa file docs/data/posts.enc.json rồi chạy lại.')}}
